@@ -106,3 +106,4 @@ venv.bak/
 # Data & binary files
 word2vec/bin/*.bin
 word2vec/data/*.txt
+models/
