@@ -6,6 +6,23 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import normalize
 
 
+def create_vectors():
+    '''
+    create word embedding without reducing the dimension
+    '''
+    print('Load word2vec bin file...')
+    word_vectors = KeyedVectors.load_word2vec_format('./word2vec/bin/GoogleNews-vectors-negative300.bin', binary=True)
+    vec_list = [word_vectors[i] for i in word_vectors.wv.vocab.keys()]
+    
+    print('Writing vectors to file...')
+    vec_file = open('./word2vec/data/vec_300.txt', 'w')
+    for word, vec in zip(word_vectors.wv.vocab.keys(), vec_list):
+        vec_str = ' '.join(str(x) for x in vec)
+        vec_file.write(vec_str + '\n')
+    vec_file.close()
+    print('Successfully saved vectors in ./word2vec/data directory')
+    
+
 def create_pca_vectors(pc_number = 50):
     print('Load word2vec bin file...')
     word_vectors = KeyedVectors.load_word2vec_format('./word2vec/bin/GoogleNews-vectors-negative300.bin', binary=True)
@@ -31,7 +48,8 @@ def create_pca_vectors(pc_number = 50):
     print('Successfully saved vectors in ./word2vec/data directory')
 
     
-def get_word_vectors(vec_file='./word2vec/data/vec_50.txt', dim=50):
+def get_word_vectors(vec_file, dim):
+    print('Read vector file...')
     with open(vec_file) as f:
         vec_string = f.read().splitlines()
     
@@ -49,11 +67,11 @@ def get_word_vectors(vec_file='./word2vec/data/vec_50.txt', dim=50):
     return wv
 
 
-def get_embedding():
+def get_embedding(vec_file='./word2vec/data/vec_50.txt', dim=50):
     '''
     return: Initialized torch embedding, vocabulary number, word embedding dimension
     '''
-    word_vector = get_word_vectors()
+    word_vector = get_word_vectors(vec_file, dim)
     embed = nn.Embedding(word_vector.size(0), word_vector.size(1))
     embed.weight = nn.Parameter(word_vector)
     return (embed, word_vector.size(0), word_vector.size(1))
