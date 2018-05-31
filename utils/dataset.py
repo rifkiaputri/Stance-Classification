@@ -34,3 +34,16 @@ class DataSet():
             for line in r:
                 rows.append(line)
         return rows
+    
+    def get_headlines_bodies(self):
+        """
+        return head(string array), body(string array) pair(there are multiple headlines for single body)
+        """
+        headlines_return = []
+        bodies_return = []
+
+        for stance in self.stances:
+            headlines_return.append(stance['Headline'])
+            bodies_return.append(self.articles[stance['Body ID']])
+
+        return headlines_return, bodies_return
