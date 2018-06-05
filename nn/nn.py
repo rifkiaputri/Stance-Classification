@@ -9,7 +9,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import torch.nn.functional as F
 
 feature_size = 5000
-input_vec_size = 10010
+input_vec_size = (feature_size * 2 + 1) + 8 + 44
 hidden_size = 100
 batch_size = 500
 drop_out = 0.4
@@ -27,11 +27,12 @@ class Net(nn.Module):
         x = F.dropout(x, p = drop_out, training=self.training)
         return self.l2(x)
 
-if __name__ == '__main__':
+def runNN():
     from utils.dataset import DataSet
+    import utils.score as sc
 
     import sentiment_feature as s_f
-    import overlapping_feature as o_f
+    import count_feature as c_f
     import tfidf_feature as t_f
 
     #make train, competition_test data prepared
@@ -69,79 +70,80 @@ if __name__ == '__main__':
     for ins in test_y:
         test_y_one_hot.append(label_ref[ins])
 
-    #initialize tfidf vectorizer for tf-idf feature
-    tfidf_vectorizer = t_f.tfidfVectorizer_init(train_heads, train_bodies, test_heads, test_bodies)
-
     #generate features for "train" dataset
     print('Generate features from train dataset')
     if not t_f.check_tfidf_feature_exist('train'):
         print('generate and load tfidf feature')
-        train_tfidf_feature = t_f.tfidf_feature_generate('train', tfidf_vectorizer, train_x)
+        tfidf_vectorizer = t_f.tfidfVectorizer_init(train_heads, train_bodies, test_heads, test_bodies)
+        t_f.tfidf_feature_generate('train', tfidf_vectorizer, train_x)
         train_tfidf_feature = t_f.tfidf_feature_read('train')
     else:
         print('load tfidf feature')
         train_tfidf_feature = t_f.tfidf_feature_read('train')
 
+    
     if not s_f.check_sentiment_feature_exist('train'):
         print('generate and load sentiment feature')
         train_sentiment_feature = s_f.sentiment_feature_generate('train', train_heads, train_bodies)
     else:
         print('load sentiment feature')
         train_sentiment_feature = s_f.sentiment_feature_read('train')
-
-    if not o_f.check_overlapping_feature_exist('train'):
+    
+    
+    if not c_f.check_count_feature_exist('train'):
         print('generate and load overlapping feature')
-        train_overlapping_feature = o_f.overlapping_feature_generate('train', train_heads, train_bodies)
+        train_count_feature = c_f.count_feature_generate('train', train_heads, train_bodies)
     else:
-        print('load overlapping feature')
-        train_overlapping_feature = o_f.overlapping_feature_read('train')
-
+        print('load count feature')
+        train_count_feature = c_f.count_feature_read('train')
+    
     #generate features for "competition_test" dataset
     print('Generate features from competition test dataset')
     if not t_f.check_tfidf_feature_exist('test'):
         print('generate and load tfidf feature')
-        test_tfidf_feature = t_f.tfidf_feature_generate('test', tfidf_vectorizer, test_x)
+        tfidf_vectorizer = t_f.tfidfVectorizer_init(train_heads, train_bodies, test_heads, test_bodies)
+        t_f.tfidf_feature_generate('train', tfidf_vectorizer, train_x)
+        train_tfidf_feature = t_f.tfidf_feature_read('train')
     else:
         print('load tfidf feature')
         test_tfidf_feature = t_f.tfidf_feature_read('test')
-
+    
     if not s_f.check_sentiment_feature_exist('test'):
         print('generate and load sentiment feature')
         test_sentiment_feature = s_f.sentiment_feature_generate('test', test_heads, test_bodies)
     else:
         print('load sentiment feature')
         test_sentiment_feature = s_f.sentiment_feature_read('test')
-
-    if not o_f.check_overlapping_feature_exist('test'):
-        print('generate and load overlapping feature')
-        test_overlapping_feature = o_f.overlapping_feature_generate('test', test_heads, test_bodies)
+    
+    
+    if not c_f.check_count_feature_exist('test'):
+        print('generate and load count feature')
+        test_count_feature = c_f.count_feature_generate('test', test_heads, test_bodies)
     else:
-        print('load overlapping feature')
-        test_overlapping_feature = o_f.overlapping_feature_read('test')
-
+        print('load count feature')
+        test_count_feature = c_f.count_feature_read('test')
+    
     #add codes to run nerual net
     #prepare 'train' dataset
     tensor_x_train_tfidf = torch.from_numpy(train_tfidf_feature)
-    tensor_x_train_tfidf.size()
     tensor_x_train_sentiment = torch.from_numpy(train_sentiment_feature)
-    tensor_x_train_sentiment.size()
-    tensor_x_train_overlapping = torch.from_numpy(train_overlapping_feature)
-    tensor_x_train_overlapping.size()
-    tensor_x = torch.cat((tensor_x_train_tfidf, tensor_x_train_sentiment, tensor_x_train_overlapping), dim=1)
-    tensor_x.size()
+    tensor_x_train_count = torch.from_numpy(train_count_feature)
+    tensor_x = torch.cat((tensor_x_train_tfidf, tensor_x_train_sentiment, tensor_x_train_count), dim=1)
+    #tensor_x = torch.cat((tensor_x_train_tfidf, tensor_x_train_sentiment), dim=1)
     tensor_y = torch.from_numpy(np.asarray(train_y_one_hot))
     train_dataset = data_utils.TensorDataset(tensor_x, tensor_y)
+    #train_dataset = data_utils.TensorDataset(tensor_x_train_tfidf, tensor_y)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,batch_size=batch_size,shuffle=True)
 
     #prepare 'competition_test' dataset
     tensor_x_test_tfidf = torch.from_numpy(test_tfidf_feature)
-    #print(len(tensor_x_test_tfidf[0]))
     tensor_x_test_sentiment = torch.from_numpy(test_sentiment_feature)
-    tensor_x_test_overlapping = torch.from_numpy(test_overlapping_feature)
-    tensor_x_test = torch.cat((tensor_x_test_tfidf, tensor_x_test_sentiment, tensor_x_test_overlapping), dim=1)
-    #print(len(tensor_x_test[0]))
+    tensor_x_test_count = torch.from_numpy(test_count_feature)
+    tensor_x_test = torch.cat((tensor_x_test_tfidf, tensor_x_test_sentiment, tensor_x_test_count), dim=1)
+    #tensor_x_test = torch.cat((tensor_x_test_tfidf, tensor_x_test_sentiment), dim=1)
     tensor_y_test = torch.from_numpy(np.asarray(test_y_one_hot))
     test_dataset = data_utils.TensorDataset(tensor_x_test, tensor_y_test)
+    #test_dataset = data_utils.TensorDataset(tensor_x_test_tfidf, tensor_y_test)
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,batch_size=batch_size,shuffle=False)
 
     model = Net()
@@ -162,24 +164,40 @@ if __name__ == '__main__':
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(epoch, batch_idx * len(data), len(train_loader.dataset),100. * batch_idx / len(train_loader), loss.data[0]))
 
     def test():
+        pred = []
+
         model.eval()
         criterion = nn.CrossEntropyLoss()
         test_loss = 0
         correct = 0
         for data, target in test_loader:
+            #label_t = torch.tensor([train_dataset.get_label_id(l) for l in label], dtype=torch.long, device=device)
             data = Variable(data, volatile=True).float()
             target = Variable(target).type(torch.LongTensor)
             output = model(data)
             # sum up batch loss
             test_loss += criterion(output, target).data[0]
             # get the index of the max
-            pred = output.data.max(1, keepdim=True)[1]
-            correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+            tmp = output.data.max(1, keepdim=True)[1]
+            pred = pred + tmp.cpu().numpy().tolist()
+            #gold = gold + label_t.cpu().numpy().tolist()
+            correct += tmp.eq(target.data.view_as(tmp)).cpu().sum()
 
         test_loss /= len(test_loader.dataset)
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(test_loss, correct, len(test_loader.dataset),100. * correct / len(test_loader.dataset)))
 
+        return pred
+
     for epoch in range(1, 90):
         train(epoch)
     torch.save(model, './nlp_project/model.pt')
-    test()
+    pred = test()
+
+    temp_pred = []
+    for e in pred:
+        temp_pred.append(e[0])
+    sc.report_score([sc.LABELS[e] for e in test_y_one_hot], [sc.LABELS[e] for e in temp_pred])
+    return pred
+
+if __name__ == '__main__':
+    pred = runNN()
